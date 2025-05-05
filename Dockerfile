@@ -12,10 +12,8 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /myapp
 
 # Update system and specifically upgrade libc-bin to the required security patch version
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libpq-dev \
-    && apt-get install -y libc-bin=2.36-9+deb12u7 \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc libpq-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -30,7 +28,8 @@ RUN python -m venv /.venv \
 FROM python:3.12-slim-bookworm as final
 
 # Upgrade libc-bin in the final stage to ensure security patch is applied
-RUN apt-get update && apt-get install -y libc-bin=2.36-9+deb12u7 \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc libpq-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
