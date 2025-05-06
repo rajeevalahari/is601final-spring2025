@@ -84,6 +84,7 @@ class User(Base):
 
     # ─────────── utility methods ───────────
     def __repr__(self) -> str:
+        """Readable representation used by tests & logs."""
         return (
             f"<User {self.nickname} "
             f"role={self.role.name} "
