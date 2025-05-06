@@ -13,6 +13,7 @@ from app.utils.nickname_gen import generate_nickname
 from app.utils.security import generate_verification_token, hash_password, verify_password
 from uuid import UUID
 from app.services.email_service import EmailService
+from app.models.user_model import AdminRole 
 from app.models.user_model import UserRole
 import logging
 
@@ -65,7 +66,12 @@ class UserService:
             new_user.nickname = new_nickname
             logger.info(f"User Role: {new_user.role}")
             user_count = await cls.count(session)
-            new_user.role = UserRole.ADMIN if user_count == 0 else UserRole.ANONYMOUS            
+            if user_count == 0:
+                new_user.role = UserRole.ADMIN
+                new_user.admin_role = AdminRole.SUPERADMIN     # NEW
+            else:
+                new_user.role = UserRole.ANONYMOUS
+
             if new_user.role == UserRole.ADMIN:
                 new_user.email_verified = True
 
@@ -189,6 +195,32 @@ class UserService:
         count = result.scalar()
         return count
     
+    @classmethod
+    async def change_role(
+        cls,
+        session: AsyncSession,
+        *,
+        target_user_id: UUID,
+        new_role: UserRole,
+        acting_user_id: UUID,
+    ) -> Optional[User]:
+        """Superadmin can change any user's role."""
+        # Fetch acting user
+        acting_user = await cls.get_by_id(session, acting_user_id)
+        if not acting_user or acting_user.admin_role != AdminRole.SUPERADMIN:
+            raise PermissionError("SUPERADMIN privilege required")
+
+        # Fetch target user
+        target_user = await cls.get_by_id(session, target_user_id)
+        if not target_user:
+            return None
+
+        target_user.role = new_role
+        session.add(target_user)
+        await session.commit()
+        await session.refresh(target_user)
+        return target_user
+
     @classmethod
     async def unlock_user_account(cls, session: AsyncSession, user_id: UUID) -> bool:
         user = await cls.get_by_id(session, user_id)
