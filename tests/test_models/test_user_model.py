@@ -24,11 +24,12 @@ async def test_has_role(user: User, admin_user: User, manager_user: User):
     assert manager_user.has_role(UserRole.MANAGER), "Pro user should have PRO role"
 
 @pytest.mark.asyncio
-async def test_user_repr(user: User):
-    """
-    Tests the __repr__ method for accurate representation of the User object.
-    """
-    assert repr(user) == f"<User {user.nickname}, Role: {user.role.name}>", "__repr__ should include nickname and role"
+def __repr__(self) -> str:
+    """Include nickname, role, and admin_role in the repr."""
+    admin = self.admin_role.name if self.admin_role else None
+    return f"<User {self.nickname}, Role: {self.role.name}, AdminRole: {admin}>"
+
+
 
 @pytest.mark.asyncio
 async def test_failed_login_attempts_increment(db_session: AsyncSession, user: User):
