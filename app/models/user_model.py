@@ -14,6 +14,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Column, DateTime, ForeignKey
+from sqlalchemy.orm import mapped_column
+from sqlalchemy.sql import func
 
 from app.database import Base
 
@@ -102,3 +105,23 @@ class User(Base):
     def update_professional_status(self, status: bool):
         self.is_professional = status
         self.professional_status_updated_at = func.now()
+
+class RoleChangeAudit(Base):
+    """
+    Records every role change:
+      • user_id     – user whose role changed
+      • changed_by  – superadmin who made the change
+      • old_role/new_role – values from UserRole
+      • changed_at  – timestamp
+    """
+    __tablename__ = "role_change_audit"
+    __mapper_args__ = {"eager_defaults": True}
+
+    id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    changed_by = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+
+    old_role = Column(SQLAlchemyEnum(UserRole, name="UserRole"), nullable=False)
+    new_role = Column(SQLAlchemyEnum(UserRole, name="UserRole"), nullable=False)
+
+    changed_at = Column(DateTime(timezone=True), server_default=func.now())

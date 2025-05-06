@@ -1,5 +1,5 @@
 """
-User routes – CRUD, auth, RBAC (Superadmin)
+User routes – CRUD, authentication, and RBAC (Super‑admin)
 """
 
 from builtins import dict, int, len, str
@@ -15,6 +15,7 @@ from fastapi import (
     Request,
 )
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import (
@@ -37,7 +38,7 @@ from app.services.user_service import UserService
 from app.services.jwt_service import create_access_token
 from app.services.email_service import EmailService
 from app.utils.link_generation import create_user_links, generate_pagination_links
-from app.models.user_model import UserRole, AdminRole
+from app.models.user_model import UserRole, AdminRole, RoleChangeAudit
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -73,7 +74,7 @@ async def login(
 
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
 
-    # include user_id & admin_role in JWT
+    # Include user_id & admin_role in JWT
     access_token = create_access_token(
         data={
             "user_id": str(user.id),
@@ -128,6 +129,34 @@ async def change_user_role(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return {"user_id": user.id, "new_role": user.role}
+
+
+@router.get(
+    "/users/{user_id}/role-history",
+    tags=["RBAC (Superadmin)"],
+    name="get_user_role_history",
+)
+async def role_history(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_super=Depends(require_superadmin),
+):
+    rows = (
+        await db.execute(
+            select(RoleChangeAudit)
+            .where(RoleChangeAudit.user_id == user_id)
+            .order_by(RoleChangeAudit.changed_at.desc())
+        )
+    ).scalars()
+    return [
+        {
+            "changed_at": r.changed_at,
+            "old_role": r.old_role,
+            "new_role": r.new_role,
+            "changed_by": r.changed_by,
+        }
+        for r in rows
+    ]
 
 
 # ─────────────────────────── USER CRUD ENDPOINTS ─────────────────────────────
@@ -230,8 +259,7 @@ async def create_user(
     email_service: EmailService = Depends(get_email_service),
     current_user: dict = Depends(require_role(["ADMIN", "MANAGER"])),
 ):
-    existing_user = await UserService.get_by_email(db, user.email)
-    if existing_user:
+    if await UserService.get_by_email(db, user.email):
         raise HTTPException(status_code=400, detail="Email already exists")
 
     created_user = await UserService.create(db, user.model_dump(), email_service)
