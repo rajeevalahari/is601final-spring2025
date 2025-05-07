@@ -141,6 +141,9 @@ async def role_history(
     db: AsyncSession = Depends(get_db),
     current_super=Depends(require_superadmin),
 ):
+    # ① short‑circuit if user itself is missing
+    if not await UserService.get_by_id(db, user_id):
+        raise HTTPException(status_code=404, detail="User not found")
     rows = (
         await db.execute(
             select(RoleChangeAudit)

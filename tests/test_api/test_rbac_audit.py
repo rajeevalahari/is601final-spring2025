@@ -1,5 +1,6 @@
 import pytest
 from uuid import UUID
+from uuid import uuid4
 from datetime import timedelta
 
 from httpx import AsyncClient
@@ -125,3 +126,22 @@ async def test_role_history_empty_returns_200(admin_user, async_client):
 
     assert resp.status_code == 200
     assert resp.json() == [] 
+
+@pytest.mark.asyncio
+async def test_role_history_nonexistent_returns_404(admin_user, async_client):
+    token = create_access_token(
+        data={
+            "user_id": str(admin_user.id),
+            "sub": admin_user.email,
+            "role": admin_user.role.name,
+            "admin_role": admin_user.admin_role.name,
+        },
+        expires_delta=None,
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    fake_id = uuid4()
+    resp = await async_client.get(f"/users/{fake_id}/role-history", headers=headers)
+
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "User not found"
