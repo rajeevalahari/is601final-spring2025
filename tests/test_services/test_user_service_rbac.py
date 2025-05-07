@@ -79,3 +79,36 @@ async def test_skip_audit_if_role_unchanged(db_session, admin_user):
     cnt_after = await db_session.scalar(select(func.count()).select_from(RoleChangeAudit))
 
     assert cnt_before == cnt_after
+
+@pytest.mark.asyncio
+async def test_change_role_noop_does_not_create_audit(db_session, admin_user, user):
+    """
+    QA‑05 • Calling change_role() with the user’s **current** role must be a NO‑OP:
+           – the User table is untouched
+           – **no extra RoleChangeAudit row** is inserted
+    """
+    # Step‑1: put the user into MANAGER once (creates 1 audit entry)
+    await UserService.change_role(
+        db_session,
+        target_user_id=user.id,
+        new_role=UserRole.MANAGER,
+        acting_user_id=admin_user.id,
+    )
+
+    cnt_before = await db_session.scalar(
+        select(func.count()).select_from(RoleChangeAudit)
+    )
+
+    # Step‑2: call again with the *same* role – should NOT insert a new audit row
+    await UserService.change_role(
+        db_session,
+        target_user_id=user.id,
+        new_role=UserRole.MANAGER,          # same as current
+        acting_user_id=admin_user.id,
+    )
+
+    cnt_after = await db_session.scalar(
+        select(func.count()).select_from(RoleChangeAudit)
+    )
+
+    assert cnt_before == cnt_after, "idempotent call must not create extra audit row"
