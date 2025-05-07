@@ -1,8 +1,8 @@
-# README Enhancement: RBAC Feature, QA Issues & Comprehensive Testing
+# README: RBAC Feature, QA Issues, Comprehensive Testing & DockerHub Deployment
 
 ---
 
-# **Implemented Feature: RBAC Enhancements & Role-Audit Trail**
+# 📌 **Implemented Feature: RBAC Enhancements & Role-Audit Trail**
 
 We introduced an advanced **Role-Based Access Control (RBAC)** system featuring a specialized **Superadmin** role. This robust functionality allows **Superadmins** to securely manage user permissions by elevating or reducing user roles within the application, significantly enhancing administrative oversight.
 
