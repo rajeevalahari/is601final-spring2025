@@ -147,7 +147,7 @@ async def role_history(
             .where(RoleChangeAudit.user_id == user_id)
             .order_by(RoleChangeAudit.changed_at.desc())
         )
-    ).scalars()
+    ).scalars().all()
     return [
         {
             "changed_at": r.changed_at,

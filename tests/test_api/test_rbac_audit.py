@@ -105,3 +105,23 @@ async def test_change_role_nonexistent_user_returns_404(admin_user, async_client
         headers=headers,
     )
     assert resp.status_code == 404
+
+@pytest.mark.asyncio
+async def test_role_history_empty_returns_200(admin_user, async_client):
+    """Fresh user with no audit rows => 200 + empty list."""
+    # auth header for superadmin
+    token = create_access_token(
+        data={
+            "user_id": str(admin_user.id),
+            "sub": admin_user.email,
+            "role": admin_user.role.name,
+            "admin_role": admin_user.admin_role.name,
+        },
+        expires_delta=None,
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = await async_client.get(f"/users/{admin_user.id}/role-history", headers=headers)
+
+    assert resp.status_code == 200
+    assert resp.json() == [] 
