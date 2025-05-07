@@ -145,3 +145,26 @@ async def test_role_history_nonexistent_returns_404(admin_user, async_client):
 
     assert resp.status_code == 404
     assert resp.json()["detail"] == "User not found"
+
+@pytest.mark.asyncio
+async def test_change_role_invalid_enum(admin_user, async_client):
+    token = create_access_token(
+        data={
+            "user_id": str(admin_user.id),
+            "sub": admin_user.email,
+            "role": admin_user.role.name,
+            "admin_role": admin_user.admin_role.name,
+        },
+        expires_delta=None,
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+
+    fake_id = uuid4()
+    resp = await async_client.patch(
+        f"/users/{fake_id}/role",
+        json={"new_role": "GODMODE"},     # invalid
+        headers=headers,
+    )
+
+    # FastAPI returns 422 for request‑body validation errors
+    assert resp.status_code == 422
