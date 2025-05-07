@@ -63,3 +63,19 @@ async def test_change_role_creates_audit_entry(db_session, admin_user, user):
     assert rec.changed_by == admin_user.id
     assert rec.old_role == UserRole.AUTHENTICATED
     assert rec.new_role == UserRole.MANAGER
+
+@pytest.mark.asyncio
+async def test_skip_audit_if_role_unchanged(db_session, admin_user):
+    # count rows before
+    cnt_before = await db_session.scalar(select(func.count()).select_from(RoleChangeAudit))
+
+    # same role → should be ignored
+    await UserService.change_role(
+        db_session,
+        target_user_id=admin_user.id,
+        new_role=UserRole.ADMIN,
+        acting_user_id=admin_user.id,
+    )
+    cnt_after = await db_session.scalar(select(func.count()).select_from(RoleChangeAudit))
+
+    assert cnt_before == cnt_after

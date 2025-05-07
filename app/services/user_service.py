@@ -208,6 +208,8 @@ class UserService:
             return None
 
         old_role = target_user.role
+        if new_role == old_role:
+            return target_user
         target_user.role = new_role
 
         audit = RoleChangeAudit(
